@@ -1,0 +1,97 @@
+// 1. Load level 2 (Kabupaten/Kota) admin boundaries
+var level2 = ee.FeatureCollection("FAO/GAUL/2015/level2");
+
+// 2. Filter Thailand and Bangkok
+var thailand = level2.filter(ee.Filter.eq('ADM0_NAME', 'Thailand'));
+var bangkok = thailand.filter(ee.Filter.eq('ADM1_NAME', 'Bangkok'));
+
+// 3. Merge geometry of Bangkok
+var land = bangkok.union().geometry();
+Map.centerObject(land, 10);
+Map.addLayer(land, {color: 'green'}, 'Bangkok Land Only');
+
+// 4. Grid size (~7 km × ~5.5 km) / 4
+var dx = 0.1258 / 2/4;  // longitude step
+var dy = 0.0988 / 2/4;  // latitude step
+
+// 5. Create bounding box and generate grid
+var bounds = land.bounds();
+var coords = ee.List(bounds.coordinates().get(0));
+var lons = coords.map(function(coord) { return ee.Number(ee.List(coord).get(0)); });
+var lats = coords.map(function(coord) { return ee.Number(ee.List(coord).get(1)); });
+var lonMin = ee.Number(lons.reduce(ee.Reducer.min()));
+var lonMax = ee.Number(lons.reduce(ee.Reducer.max()));
+var latMin = ee.Number(lats.reduce(ee.Reducer.min()));
+var latMax = ee.Number(lats.reduce(ee.Reducer.max()));
+var lonList = ee.List.sequence(lonMin, lonMax, dx);
+var latList = ee.List.sequence(latMin, latMax, dy);
+
+// 6. Create rectangular grid tiles
+var nestedGrid = lonList.map(function(lon) {
+  return latList.map(function(lat) {
+    var rect = ee.Geometry.Rectangle([
+      [lon, lat],
+      [ee.Number(lon).add(dx), ee.Number(lat).add(dy)]
+    ]);
+    return ee.Feature(rect);
+  });
+});
+var flatGrid = ee.FeatureCollection(ee.List(nestedGrid).flatten());
+
+// 7. Filter grid to land area and clip
+var landGrid = flatGrid.filterBounds(land).map(function(f) {
+  return f.intersection(land, 1);
+});
+
+// // 8. Add city name to each grid cell using spatial join
+// var gridWithCity = landGrid.map(function(gridCell) {
+//   var city = jabodetabek.filterBounds(gridCell.geometry()).first().get('ADM2_NAME');
+//   return gridCell.set('city', city);
+// });
+
+// 9. Visualization: city boundaries and grid
+Map.addLayer(bangkok.style({color: 'blue', fillColor: '00000000', width: 1}), {}, 'City Boundaries');
+Map.addLayer(landGrid.style({color: 'orange', fillColor: '00000000', width: 1}), {}, 'Grid Cells');
+// 10. Define time range
+var startDate = ee.Date('2023-05-01');
+var endDate = ee.Date('2025-04-30');
+var nDays = endDate.difference(startDate, 'day');
+
+var dates = ee.List.sequence(0, nDays.subtract(1)).map(function(d) {
+  return startDate.advance(d, 'day');
+});
+
+// 11. Extract daily CO per grid cell
+var dailyCollections = dates.map(function(date) {
+  date = ee.Date(date);
+  var image = ee.ImageCollection('COPERNICUS/S5P/OFFL/L3_CO')
+    .select('CO_column_number_density')
+    .filterDate(date, date.advance(1, 'day'))
+    .mean();
+
+  var zonal = image.reduceRegions({
+    collection: landGrid, // gunakan grid tanpa 'city'
+    reducer: ee.Reducer.mean(),
+    scale: 10000
+  });
+
+  return zonal.map(function(f) {
+    var center = f.geometry().centroid().coordinates();
+    return f.set({
+      'date': date.format('YYYY-MM-dd'),
+      'longitude': center.get(0),
+      'latitude': center.get(1)
+      // city tidak dimasukkan
+    });
+  });
+});
+
+// 12. Flatten and export
+var landCO = ee.FeatureCollection(dailyCollections).flatten();
+
+Export.table.toDrive({
+  collection: landCO,
+  description: 'CO_Land_Grid_Bangkok',
+  fileFormat: 'CSV',
+  selectors: ['date', 'mean', 'longitude', 'latitude']  // city dihapus
+});
