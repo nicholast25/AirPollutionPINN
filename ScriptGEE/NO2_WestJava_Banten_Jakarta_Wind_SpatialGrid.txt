@@ -1,0 +1,348 @@
+// =======================================
+// 1. Load administrative boundaries
+// =======================================
+
+var level1 = ee.FeatureCollection("FAO/GAUL/2015/level1");
+var level2 = ee.FeatureCollection("FAO/GAUL/2015/level2");
+
+var provinces = level1.filter(
+  ee.Filter.inList('ADM1_NAME', [
+    'Banten',
+    'Dki Jakarta',
+    'Jawa Barat'
+  ])
+);
+
+var provinces2 = level2.filter(
+  ee.Filter.inList('ADM1_NAME', [
+    'Banten',
+    'Dki Jakarta',
+    'Jawa Barat'
+  ])
+);
+
+
+// =======================================
+// 2. Create land and sea geometry
+// =======================================
+
+var land = provinces2.union().geometry();
+
+var seaBuffer = land.buffer(22224);
+
+var surroundingSea = seaBuffer.difference(land, 1);
+
+
+// =======================================
+// 3. Create land and sea grids
+// =======================================
+
+var createGrid = function(bounds, dx, dy, mask) {
+
+  var coords = ee.List(bounds.coordinates().get(0));
+
+  var lons = coords.map(function(coord) {
+    return ee.Number(ee.List(coord).get(0));
+  });
+
+  var lats = coords.map(function(coord) {
+    return ee.Number(ee.List(coord).get(1));
+  });
+
+  var lonList = ee.List.sequence(
+    ee.Number(lons.reduce(ee.Reducer.min())),
+    ee.Number(lons.reduce(ee.Reducer.max())),
+    dx
+  );
+
+  var latList = ee.List.sequence(
+    ee.Number(lats.reduce(ee.Reducer.min())),
+    ee.Number(lats.reduce(ee.Reducer.max())),
+    dy
+  );
+
+  var nestedGrid = lonList.map(function(lon) {
+
+    return latList.map(function(lat) {
+
+      var rect = ee.Geometry.Rectangle([
+        lon,
+        lat,
+        ee.Number(lon).add(dx),
+        ee.Number(lat).add(dy)
+      ]);
+
+      return ee.Feature(rect);
+
+    });
+
+  });
+
+  var flatGrid = ee.FeatureCollection(
+    ee.List(nestedGrid).flatten()
+  );
+
+  return flatGrid
+    .filterBounds(mask)
+    .map(function(f) {
+      return f.intersection(mask, 1);
+    });
+
+};
+
+
+// Higher resolution land grid
+var landGrid = createGrid(
+  land.bounds(),
+  0.1258 / 4,
+  0.0988 / 2,
+  land
+);
+
+// Coarser sea grid
+var seaGrid = createGrid(
+  surroundingSea.bounds(),
+  0.1258,
+  0.0988,
+  surroundingSea
+);
+
+
+// =======================================
+// 4. Visualization
+// =======================================
+
+Map.centerObject(land, 10);
+
+Map.addLayer(land, {color: 'green'}, 'Land');
+
+Map.addLayer(
+  surroundingSea,
+  {color: 'blue'},
+  'Sea Buffer'
+);
+
+Map.addLayer(
+  landGrid.style({
+    color:'red',
+    fillColor:'00000000',
+    width:1
+  }),
+  {},
+  'Land Grid'
+);
+
+Map.addLayer(
+  seaGrid.style({
+    color:'orange',
+    fillColor:'00000000',
+    width:1
+  }),
+  {},
+  'Sea Grid'
+);
+
+
+// =======================================
+// 5. Define time range
+// =======================================
+
+var startDate = ee.Date('2023-05-01');
+
+var endDate = ee.Date('2025-04-30');
+
+var nDays = endDate.difference(startDate, 'day');
+
+var dates = ee.List.sequence(
+  0,
+  nDays.subtract(1)
+).map(function(d) {
+  return startDate.advance(d, 'day');
+});
+
+
+// =======================================
+// 6. Extract ECMWF ERA5 wind data
+// =======================================
+
+var extractWindData = function(date, grid, label) {
+
+  date = ee.Date(date);
+
+  // Daily mean ERA5-Land hourly wind
+  var wind = ee.ImageCollection('ECMWF/ERA5_LAND/HOURLY')
+    .filterDate(date, date.advance(1, 'day'))
+    .select([
+      'u_component_of_wind_10m',
+      'v_component_of_wind_10m'
+    ])
+    .mean();
+
+  // Wind components
+  var u = wind.select('u_component_of_wind_10m');
+
+  var v = wind.select('v_component_of_wind_10m');
+
+  // Wind speed
+  var speed = u.pow(2)
+    .add(v.pow(2))
+    .sqrt()
+    .rename('wind_speed_10m');
+
+  // Wind direction
+  var direction = u.atan2(v)
+    .multiply(180)
+    .divide(Math.PI)
+    .add(180)
+    .rename('wind_direction_10m');
+
+  // Combine all bands
+  var combined = wind
+    .addBands(speed)
+    .addBands(direction);
+
+  // Zonal statistics
+  var zonal = combined.reduceRegions({
+    collection: grid,
+    reducer: ee.Reducer.mean(),
+    scale: 10000
+  });
+
+  return zonal.map(function(f) {
+
+    var center = f.geometry()
+      .centroid()
+      .coordinates();
+
+    return f.set({
+      'date': date.format('YYYY-MM-dd'),
+
+      'u_component_of_wind_10m':
+        f.get('u_component_of_wind_10m'),
+
+      'v_component_of_wind_10m':
+        f.get('v_component_of_wind_10m'),
+
+      'wind_speed_10m':
+        f.get('wind_speed_10m'),
+
+      'wind_direction_10m':
+        f.get('wind_direction_10m'),
+
+      'longitude': center.get(0),
+
+      'latitude': center.get(1),
+
+      'type': label   // land or sea
+    });
+
+  });
+
+};
+
+
+// =======================================
+// 7. Land extraction
+// =======================================
+
+var dailyLand = dates.map(function(d) {
+  return extractWindData(d, landGrid, 'land');
+});
+
+var landCollection = ee.FeatureCollection(
+  dailyLand
+).flatten();
+
+
+// =======================================
+// 8. Sea extraction
+// =======================================
+
+var dailySea = dates.map(function(d) {
+  return extractWindData(d, seaGrid, 'sea');
+});
+
+var seaCollection = ee.FeatureCollection(
+  dailySea
+).flatten();
+
+
+// =======================================
+// 9. Export land data
+// =======================================
+
+Export.table.toDrive({
+  collection: landCollection,
+
+  description: 'ERA5_Wind_Land_Grid_Jabar',
+
+  fileFormat: 'CSV',
+
+  selectors: [
+    'date',
+    'longitude',
+    'latitude',
+    'u_component_of_wind_10m',
+    'v_component_of_wind_10m',
+    'wind_speed_10m',
+    'wind_direction_10m',
+    'type'
+  ]
+});
+
+
+// =======================================
+// 10. Export sea data
+// =======================================
+
+Export.table.toDrive({
+  collection: seaCollection,
+
+  description: 'ERA5_Wind_Sea_Grid_Jabar',
+
+  fileFormat: 'CSV',
+
+  selectors: [
+    'date',
+    'longitude',
+    'latitude',
+    'u_component_of_wind_10m',
+    'v_component_of_wind_10m',
+    'wind_speed_10m',
+    'wind_direction_10m',
+    'type'
+  ]
+});
+
+
+// =======================================
+// 11. Check unique coordinates
+// =======================================
+
+print(
+  'Land - unique longitudes:',
+  landCollection.aggregate_array('longitude')
+    .distinct()
+    .size()
+);
+
+print(
+  'Land - unique latitudes:',
+  landCollection.aggregate_array('latitude')
+    .distinct()
+    .size()
+);
+
+print(
+  'Sea - unique longitudes:',
+  seaCollection.aggregate_array('longitude')
+    .distinct()
+    .size()
+);
+
+print(
+  'Sea - unique latitudes:',
+  seaCollection.aggregate_array('latitude')
+    .distinct()
+    .size()
+);
