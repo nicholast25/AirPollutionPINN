@@ -15,9 +15,9 @@ var land = jabodetabek.union().geometry();
 Map.centerObject(land, 10);
 Map.addLayer(land, {color: 'green'}, 'Jabodetabek Land Only');
 
-// 4. Grid size (~7 km × ~5.5 km)
-var dx = 0.1258 / 2 / 4;  // longitude step
-var dy = 0.0988 / 2 / 4;  // latitude step
+// 4. Grid size (~3.5 km × ~5.5 km)/4
+var dx = 0.1258 / 4/4;  // longitude step
+var dy = 0.0988 / 2/4;  // latitude step
 
 // 5. Create bounding box and generate grid
 var bounds = land.bounds();
@@ -48,43 +48,36 @@ var landGrid = flatGrid.filterBounds(land).map(function(f) {
   return f.intersection(land, 1);
 });
 
-// 8. Visualisasi
-Map.addLayer(jabodetabek.style({color: 'blue', fillColor: '00000000', width: 1}), {}, 'City Boundaries');
-Map.addLayer(landGrid.style({color: 'orange', fillColor: '00000000', width: 1}), {}, 'Grid Cells');
+// // 8. Add city name to each grid cell using spatial join
+// var gridWithCity = landGrid.map(function(gridCell) {
+//   var city = jabodetabek.filterBounds(gridCell.geometry()).first().get('ADM2_NAME');
+//   return gridCell.set('city', city);
+// });
 
-// 9. Define time range
+// 9. Visualization: city boundaries and grid
+Map.addLayer(jabodetabek.style({color: 'blue', fillColor: '00000000', width: 1}), {}, 'City Boundaries');
+Map.addLayer(landGrid.style({color: 'orange', fillColor: '00000000', width: 1}), {}, 'Grid Cells with City Labels');
+
+
+// 10. Define time range
 var startDate = ee.Date('2023-05-01');
-var endDate = ee.Date('2025-04-30');  // Ganti ke '2025-04-30' untuk periode penuh
+var endDate = ee.Date('2025-04-30');
 var nDays = endDate.difference(startDate, 'day');
 
 var dates = ee.List.sequence(0, nDays.subtract(1)).map(function(d) {
   return startDate.advance(d, 'day');
 });
 
-// 10. Extract mean daily wind speed and direction
-var windCollections = dates.map(function(date) {
+// 11. Extract daily NO2 per grid cell
+var dailyCollections = dates.map(function(date) {
   date = ee.Date(date);
-
-  // Ambil rata-rata hourly data (24 jam) pada hari itu
-  var wind = ee.ImageCollection('ECMWF/ERA5_LAND/HOURLY')
+  var image = ee.ImageCollection('COPERNICUS/S5P/OFFL/L3_NO2')
+    .select('NO2_column_number_density')
     .filterDate(date, date.advance(1, 'day'))
-    .select(['u_component_of_wind_10m', 'v_component_of_wind_10m'])
-    .mean();  // rata-rata harian
+    .mean();
 
-  // Hitung wind speed dan direction
-  var u = wind.select('u_component_of_wind_10m');
-  var v = wind.select('v_component_of_wind_10m');
-
-  var speed = u.pow(2).add(v.pow(2)).sqrt().rename('wind_speed_10m');
-  var direction = u.atan2(v)
-    .multiply(180).divide(Math.PI)
-    .add(180)  // convert ke azimuth (0°=Utara, 90°=Timur)
-    .rename('wind_direction_10m');
-
-  var combined = wind.addBands(speed).addBands(direction);
-
-  var zonal = combined.reduceRegions({
-    collection: landGrid,
+  var zonal = image.reduceRegions({
+    collection: landGrid, // grid tanpa 'city'
     reducer: ee.Reducer.mean(),
     scale: 10000
   });
@@ -93,22 +86,20 @@ var windCollections = dates.map(function(date) {
     var center = f.geometry().centroid().coordinates();
     return f.set({
       'date': date.format('YYYY-MM-dd'),
+      'mean' :f.get('mean'),
       'longitude': center.get(0),
       'latitude': center.get(1)
+      // tanpa city
     });
   });
 });
 
-// 11. Flatten and Export
-var landWind = ee.FeatureCollection(windCollections).flatten();
+// 12. Flatten and export
+var landNO2 = ee.FeatureCollection(dailyCollections).flatten();
 
 Export.table.toDrive({
-  collection: landWind,
-  description: 'Wind_CO_MeanDaily_Jabodetabek',
+  collection: landNO2,
+  description: 'NO2_Land_Grid_Jabodetabek',
   fileFormat: 'CSV',
-  selectors: [
-    'date', 'longitude', 'latitude',
-    'u_component_of_wind_10m', 'v_component_of_wind_10m',
-    'wind_speed_10m', 'wind_direction_10m'
-  ]
+  selectors: ['date', 'mean', 'longitude', 'latitude']
 });
