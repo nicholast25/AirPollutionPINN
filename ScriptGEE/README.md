@@ -87,7 +87,7 @@ Both pollutant concentration and wind variables are extracted according to the s
 
 ## `WestJava_Banten_Jakarta_SpatialCentroid`
 
-Uses representative centroid-based spatial configurations.
+Uses representative centroid-based spatial configurations for each city/regency.
 
 For this configuration:
 
