@@ -33,7 +33,7 @@ The centroid-based spatial representation showed significant limitations in capt
 Several experiments produced:
 
 - Extremely small reconstructed spatial interaction magnitudes (approximately `~1e-5`)
-- Unstable inverse PDE coefficient predictions
+- Unstable inverse PDE coefficient predictions for Advection-Diffusion PDE
 - Weak representation of localized transport dynamics
 - Reduced sensitivity to spatial variability across regions
 
