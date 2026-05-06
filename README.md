@@ -71,7 +71,6 @@ The data can be accessed here:
 The external dataset includes:
 
 - Extracted atmospheric variables
-- Processed pollutant datasets
 - Reconstructed pollutant concentration outputs
 - Imputed missing-value datasets
 
