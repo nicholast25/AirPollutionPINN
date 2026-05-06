@@ -33,6 +33,6 @@ Wind variables are spatially adjusted to match the pollutant grid configuration.
 
 # Notes
 
-- CO and NO₂ implementations may use different spatial resolutions following their respective Sentinel-5P Level-2 configurations.
+- CO and NO₂ implementations may use different spatial resolutions following their respective Sentinel-5P configurations.
 - Wind variables are spatially aligned with the corresponding pollutant grids.
 - Some implementations may represent exploratory or intermediate experimental configurations evaluated during the development of the final methodology presented in the paper.
