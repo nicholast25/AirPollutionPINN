@@ -26,8 +26,7 @@ The event was analyzed to evaluate pollutant reconstruction performance during a
 References:
 - Kompas — Kronologi Kebakaran Depo Pertamina Plumpang  
   https://megapolitan.kompas.com/read/2023/03/04/07494471/kronologi-kebakaran-di-depo-pertamina-plumpang-bau-bensin-menyengat
-- AP News — Fire at Indonesian oil depot kills residents and triggers evacuation :contentReference[oaicite:0]{index=0}
-
+  
 ---
 
 ## 2. Tambora Residential Fire (11 October 2024)
@@ -39,7 +38,6 @@ This case was used to analyze localized urban fire emissions and their spatial-t
 References:
 - Kompas — Kontrakan 50 Pintu di Tambora Ludes Terbakar  
   https://megapolitan.kompas.com/read/2024/10/11/15225751/kontrakan-50-pintu-di-tambora-ludes-terbakar-diduga-akibat-korsleting
-- Additional media coverage :contentReference[oaicite:1]{index=1}
   
 ---
 
