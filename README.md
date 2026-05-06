@@ -47,7 +47,7 @@ These scripts serve as a guide for reproducing the environmental data collection
 ### `WestJava_Banten_Jakarta_SpatialCentroid/`
 ### `WestJava_Banten_Jakarta_SpatialGrid/`
 
-These directories contain the experimental implementations and configurations for CO and NO₂ reconstruction tasks from 2023–2025.
+These directories contain the experimental implementations and configurations for CO and NO₂ from data preprocessing, training model, to imputation and reconstruction tasks from 2023–2025.
 
 The folders include variations in:
 
