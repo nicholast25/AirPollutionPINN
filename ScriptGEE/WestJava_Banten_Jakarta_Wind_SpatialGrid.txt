@@ -14,11 +14,7 @@ var indonesia = level2.filter(
   ee.Filter.eq('ADM0_NAME', 'Indonesia')
 );
 
-var targetProvinces = [
-  'Jakarta Raya',
-  'Banten',
-  'Jawa Barat'
-];
+var targetProvinces = [Banten', 'Dki Jakarta', 'Jawa Barat'];
 
 var studyArea = indonesia.filter(
   ee.Filter.inList('ADM1_NAME', targetProvinces)
