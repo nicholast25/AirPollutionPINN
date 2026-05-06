@@ -2,7 +2,7 @@
 
 This directory contains the spatial-grid implementation of the CO and NO₂ reconstruction framework for the West Java, Banten, and Jakarta regions.
 
-The implementation uses spatial-grid representations aligned with Sentinel-5P Level-2 pollutant resolutions and focuses on large-scale regional atmospheric reconstruction experiments.
+The implementation uses spatial-grid representations aligned with Sentinel-5P pollutant resolutions and focuses on large-scale regional atmospheric reconstruction experiments.
 
 The files mainly represent the end-to-end model implementation pipeline, including:
 
