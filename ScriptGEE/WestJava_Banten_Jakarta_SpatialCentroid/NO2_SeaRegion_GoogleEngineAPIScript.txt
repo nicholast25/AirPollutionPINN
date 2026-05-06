@@ -1,0 +1,78 @@
+var provinces = ee.FeatureCollection("FAO/GAUL/2015/level1")
+  .filter(ee.Filter.inList('ADM1_NAME', ['Banten', 'Dki Jakarta', 'Jawa Barat']));
+
+var land = provinces.union().geometry();
+var seaBuffer = land.buffer(22224);
+var surroundingSea = seaBuffer.difference(land);
+
+Map.centerObject(surroundingSea, 9);
+Map.addLayer(surroundingSea, {color: 'blue'}, 'Sea Area');
+
+// Grid size in degrees (~3.5 km × 5.5 km) --> Make it 4 x 2 Grid
+var dx = 0.1258; // longitude ~14 km
+var dy = 0.0988;  // latitude ~11 km
+
+var bounds = surroundingSea.bounds().coordinates().get(0);
+bounds = ee.List(bounds);
+
+var lonMin = ee.Number(bounds.map(function(c){return ee.Number(ee.List(c).get(0));}).reduce(ee.Reducer.min()));
+var lonMax = ee.Number(bounds.map(function(c){return ee.Number(ee.List(c).get(0));}).reduce(ee.Reducer.max()));
+var latMin = ee.Number(bounds.map(function(c){return ee.Number(ee.List(c).get(1));}).reduce(ee.Reducer.min()));
+var latMax = ee.Number(bounds.map(function(c){return ee.Number(ee.List(c).get(1));}).reduce(ee.Reducer.max()));
+
+var lonList = ee.List.sequence(lonMin, lonMax, dx);
+var latList = ee.List.sequence(latMin, latMax, dy);
+
+var flatGrid = ee.FeatureCollection(
+  lonList.map(function(lon){
+    return latList.map(function(lat){
+      return ee.Feature(ee.Geometry.Rectangle(
+        [lon, lat, ee.Number(lon).add(dx), ee.Number(lat).add(dy)]));
+    });
+  }).flatten()
+);
+
+var seaGrid = flatGrid.filterBounds(surroundingSea)
+  .map(function(f){ return f.intersection(surroundingSea); });
+
+Map.addLayer(seaGrid, {color: 'red'}, 'Sea Grid');
+
+var startDate = ee.Date('2023-05-01');
+var endDate = ee.Date('2025-04-30');
+var nDays = endDate.difference(startDate, 'day');
+
+var dates = ee.List.sequence(0, nDays.subtract(1))
+  .map(function(d){ return startDate.advance(d, 'day'); });
+
+var dailyCollections = dates.map(function(date){
+  date = ee.Date(date);
+  
+  var image = ee.ImageCollection('COPERNICUS/S5P/OFFL/L3_NO2')
+      .select('tropospheric_NO2_column_number_density')
+      .filterDate(date, date.advance(1, 'day'))
+      .mean();
+  
+  var zonal = image.reduceRegions({
+    collection: seaGrid,
+    reducer: ee.Reducer.mean(),
+    scale: 10000
+  });
+  
+  return zonal.map(function(f){
+    var center = f.geometry().centroid().coordinates();
+    return f.set({
+      'date': date.format('YYYY-MM-dd'),
+      'longitude': center.get(0),
+      'latitude': center.get(1)
+    });
+  });
+});
+
+var seaNO2 = ee.FeatureCollection(dailyCollections).flatten();
+
+Export.table.toDrive({
+  collection: seaNO2,
+  description: 'NO2_Sea_4xGrid',
+  fileFormat: 'CSV',
+  selectors: ['date', 'mean', 'longitude', 'latitude']
+});
