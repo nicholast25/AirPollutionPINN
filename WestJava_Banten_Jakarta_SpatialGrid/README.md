@@ -7,7 +7,6 @@ The implementation uses spatial-grid representations aligned with Sentinel-5P Le
 The files mainly represent the end-to-end model implementation pipeline, including:
 
 - Data preprocessing
-- Spatial and temporal alignment
 - Model training
 - Reconstruction of missing pollutant observations
 - Imputation of incomplete spatial-temporal pollutant grids
