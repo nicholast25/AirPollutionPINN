@@ -1,0 +1,118 @@
+// =======================================
+// 1. Load administrative boundaries
+// =======================================
+var level1 = ee.FeatureCollection("FAO/GAUL/2015/level1");
+var level2 = ee.FeatureCollection("FAO/GAUL/2015/level2");
+
+var provinces = level1.filter(ee.Filter.inList('ADM1_NAME', ['Banten', 'Dki Jakarta', 'Jawa Barat']));
+var provinces2 = level2.filter(ee.Filter.inList('ADM1_NAME', ['Banten', 'Dki Jakarta', 'Jawa Barat']));
+
+var land = provinces2.union().geometry();
+var seaBuffer = land.buffer(22224);
+var surroundingSea = seaBuffer.difference(land, 1);
+
+// =======================================
+// 2 & 3. Create land and sea grids
+// =======================================
+var createGrid = function(bounds, dx, dy, mask) {
+  var coords = ee.List(bounds.coordinates().get(0));
+  var lons = coords.map(function(coord){return ee.Number(ee.List(coord).get(0));});
+  var lats = coords.map(function(coord){return ee.Number(ee.List(coord).get(1));});
+  
+  var lonList = ee.List.sequence(ee.Number(lons.reduce(ee.Reducer.min())), ee.Number(lons.reduce(ee.Reducer.max())), dx);
+  var latList = ee.List.sequence(ee.Number(lats.reduce(ee.Reducer.min())), ee.Number(lats.reduce(ee.Reducer.max())), dy);
+  
+  var nestedGrid = lonList.map(function(lon){
+    return latList.map(function(lat){
+      var rect = ee.Geometry.Rectangle([lon, lat, ee.Number(lon).add(dx), ee.Number(lat).add(dy)]);
+      return ee.Feature(rect);
+    });
+  });
+  
+  var flatGrid = ee.FeatureCollection(ee.List(nestedGrid).flatten());
+  return flatGrid.filterBounds(mask).map(function(f){ return f.intersection(mask, 1); });
+};
+
+var landGrid = createGrid(land.bounds(), 0.1258/2, 0.0988/2, land);
+var seaGrid = createGrid(surroundingSea.bounds(), 0.1258, 0.0988, surroundingSea);
+
+// =======================================
+// 4. Visualization (optional)
+// =======================================
+Map.centerObject(land, 10);
+Map.addLayer(land, {color: 'green'}, 'Land');
+Map.addLayer(surroundingSea, {color: 'blue'}, 'Sea Buffer');
+Map.addLayer(landGrid.style({color:'red', fillColor:'00000000', width:1}), {}, 'Land Grid');
+Map.addLayer(seaGrid.style({color:'orange', fillColor:'00000000', width:1}), {}, 'Sea Grid');
+
+// =======================================
+// 5. Define time range
+// =======================================
+var startDate = ee.Date('2023-05-01');
+var endDate = ee.Date('2025-04-30');
+var nDays = endDate.difference(startDate, 'day');
+var dates = ee.List.sequence(0, nDays.subtract(1)).map(function(d){return startDate.advance(d, 'day');});
+
+// =======================================
+// 6. Extract CO per grid (land or sea)
+// =======================================
+var extractData = function(date, grid, label){
+  date = ee.Date(date);
+
+  var image = ee.ImageCollection('COPERNICUS/S5P/OFFL/L3_CO')
+    .select('CO_column_number_density')
+    .filterDate(date, date.advance(1, 'day'))
+    .mean()
+    .rename("mean_co");
+    
+  var zonal = image.reduceRegions({
+    collection: grid,
+    reducer: ee.Reducer.mean(),
+    scale: 10000
+    });
+
+  return zonal.map(function(f){
+    var center = f.geometry().centroid().coordinates();
+    return f.set({
+      'date': date.format('YYYY-MM-dd'),
+      'mean_co': f.get('mean'),
+      'longitude': center.get(0),
+      'latitude': center.get(1),
+      'type': label  // "land" or "sea"
+    });
+  });
+};
+
+
+// Land extraction
+var dailyLand = dates.map(function(d){ return extractData(d, landGrid, 'land'); });
+var landCollection = ee.FeatureCollection(dailyLand).flatten();
+
+// Sea extraction
+var dailySea = dates.map(function(d){ return extractData(d, seaGrid, 'sea'); });
+var seaCollection = ee.FeatureCollection(dailySea).flatten();
+
+// =======================================
+// 7. Export to Drive
+// =======================================
+Export.table.toDrive({
+  collection: landCollection,
+  description: 'CO_Land_Grid_Jabar',
+  fileFormat: 'CSV',
+  selectors: ['date','mean_co','longitude','latitude','type']
+});
+
+Export.table.toDrive({
+  collection: seaCollection,
+  description: 'CO_Sea_Grid_Jabar',
+  fileFormat: 'CSV',
+  selectors: ['date','mean_co','longitude','latitude','type']
+});
+
+// =======================================
+// 8. Check unique coordinates
+// =======================================
+print('Land - unique longitudes:', landCollection.aggregate_array('longitude').distinct().size());
+print('Land - unique latitudes:', landCollection.aggregate_array('latitude').distinct().size());
+print('Sea - unique longitudes:', seaCollection.aggregate_array('longitude').distinct().size());
+print('Sea - unique latitudes:', seaCollection.aggregate_array('latitude').distinct().size());
