@@ -24,7 +24,7 @@ This scenario represents the major fire incident at the Pertamina fuel depot in 
 The event was analyzed to evaluate pollutant reconstruction performance during a large-scale urban combustion event.
 
 References:
-- Kompas — Kronologi Kebakaran Depo Pertamina Plumpang  
+- Kompas — Kronologi Kebakaran di Depo Pertamina Plumpang, Bau Bensin Menyengat Disusul Ledakan Hebat
   https://megapolitan.kompas.com/read/2023/03/04/07494471/kronologi-kebakaran-di-depo-pertamina-plumpang-bau-bensin-menyengat
   
 ---
@@ -36,7 +36,7 @@ This scenario represents the large residential fire involving approximately 50 r
 This case was used to analyze localized urban fire emissions and their spatial-temporal reconstruction characteristics.
 
 References:
-- Kompas — Kontrakan 50 Pintu di Tambora Ludes Terbakar  
+- Kompas — Kontrakan 50 Pintu di Tambora Ludes Terbakar, Diduga akibat Korsleting  
   https://megapolitan.kompas.com/read/2024/10/11/15225751/kontrakan-50-pintu-di-tambora-ludes-terbakar-diduga-akibat-korsleting
   
 ---
