@@ -84,4 +84,6 @@ To reproduce the experiments:
 4. Run the reconstruction and imputation pipelines according to the provided implementation files. Users are encouraged to use multiple notebooks and distribute the training attempts to reduce accumulated model training time.
 5. Compare generated outputs with the externally hosted datasets for verification.
 
+> **Note:** Minor differences in air pollution concentration prediction outputs or learned PDE coefficients may occur across devices or training runs due to random seed initialization, stochastic optimization, and hardware-dependent numerical behavior. Such variations are expected in deep learning and inverse optimization workflows. Reproducibility should therefore be evaluated based on consistent spatial-temporal reconstruction behavior, comparable performance metrics, and similar qualitative conclusions rather than identical numerical outputs.
+
 This repository is intended to support transparency, reproducibility, and further research development in atmospheric pollutant reconstruction and environmental spatiotemporal modeling.
