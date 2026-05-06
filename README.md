@@ -81,7 +81,7 @@ To reproduce the experiments:
 1. Use the scripts inside `ScriptGEE/` to extract environmental and pollutant variables from Google Earth Engine.
 2. Select one of the provided spatial scenario folders.
 3. Configure the desired pollutant type (CO or NO₂), spatial domain, and event scenario.
-4. Run the reconstruction and imputation pipelines according to the provided implementation files.
+4. Run the reconstruction and imputation pipelines according to the provided implementation files. Users are encouraged to use multiple notebook and distribute the training attempts to  reduce accumulated model training time.
 5. Compare generated outputs with the externally hosted datasets for verification.
 
 This repository is intended to support transparency, reproducibility, and further research development in atmospheric pollutant reconstruction and environmental spatiotemporal modeling.
