@@ -86,4 +86,4 @@ To reproduce the experiments:
 
 > **Note:** Minor differences in air pollution concentration prediction outputs or learned PDE coefficients may occur across devices or training runs due to random seed initialization, stochastic optimization, and hardware-dependent numerical behavior. Such variations are expected in deep learning and inverse optimization workflows. Reproducibility should therefore be evaluated based on consistent spatial-temporal reconstruction behavior, comparable performance metrics, and similar qualitative conclusions rather than identical numerical outputs.
 
-This repository is intended to support transparency, reproducibility, and further research development in atmospheric pollutant reconstruction and environmental spatiotemporal modeling.
+This repository aims to serve as a baseline scheme to support transparency, reproducibility, and further research development in atmospheric pollutant reconstruction and environmental spatiotemporal modeling.
