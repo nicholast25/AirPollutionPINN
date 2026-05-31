@@ -1,6 +1,6 @@
 # WestJava_Banten_Jakarta_SpatialGrid
 
-This directory contains the spatial-grid implementation of the CO and NO₂ reconstruction framework for the West Java, Banten, and Jakarta regions.
+This directory contains the spatial-grid implementation of the CO and NO₂ reconstruction framework for the West Java, Banten, and Jakarta.
 
 The implementation uses spatial-grid representations aligned with Sentinel-5P pollutant resolutions and focuses on large-scale regional atmospheric reconstruction experiments.
 
