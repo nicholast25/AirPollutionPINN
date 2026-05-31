@@ -1,6 +1,6 @@
 # BangkokCity
 
-This directory contains the implementation of the CO and NO₂ reconstruction framework for the Bangkok Metropolitan Area.
+This directory contains the implementation of the CO and NO₂ reconstruction framework for the Bangkok City.
 
 The files mainly represent the model implementation pipeline, including:
 
