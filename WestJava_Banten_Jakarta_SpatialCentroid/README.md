@@ -1,6 +1,6 @@
 # WestJava_Banten_Jakarta_SpatialCentroid
 
-This directory contains the centroid-based spatial implementation of the pollutant reconstruction framework for the West Java, Banten, and Jakarta regions.
+This directory contains the centroid-based spatial implementation of the pollutant reconstruction framework for the West Java, Banten, and Jakarta.
 
 Unlike the spatial-grid implementation, this configuration uses representative centroid locations to approximate regional atmospheric behavior.
 
