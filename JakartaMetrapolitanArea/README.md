@@ -1,6 +1,6 @@
 # JakartaMetropolitanArea
 
-This directory contains the implementation of the CO and NO₂ reconstruction framework for the Jakarta Metropolitan Area (Jabodetabek).
+This directory contains the implementation of the CO and NO₂ reconstruction framework for the Jakarta Metropolitan Area (or Jabodetabek).
 
 The files mainly represent the end-to-end model implementation pipeline, including:
 
